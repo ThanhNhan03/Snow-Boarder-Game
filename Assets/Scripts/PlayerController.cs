@@ -1,8 +1,12 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("References")]
+    [SerializeField] private GameOverUI gameOverUI;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     Rigidbody2D rb;
     [Header("Movement Settings")]
@@ -14,10 +18,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float distanceTraveled = 0f;
     [SerializeField] private float score = 0f;
     [SerializeField] private float scoreMultiplier = 0.1f;
-    
+
     [Header("Trick Score Settings")]
-    [SerializeField] private float rotationThreshold = 360f; 
-    [SerializeField] private float trickScore = 100f; 
+    [SerializeField] private float rotationThreshold = 360f;
+    [SerializeField] private float trickScore = 100f;
 
     [Header("Air Time Score Settings")]
     [SerializeField] private float airTimeScore = 10f;
@@ -26,7 +30,7 @@ public class PlayerController : MonoBehaviour
     [Header("Game State")]
     [SerializeField] private bool isDead = false;
     [SerializeField] private float restartDelay = 1f;
-    
+
     // Private variables that don't need to show in inspector
     private Vector2 lastPosition;
     private float currentRotation = 0f;
@@ -60,7 +64,7 @@ public class PlayerController : MonoBehaviour
         if (isInAir)
         {
             airTime += Time.deltaTime;
-            
+
             // Award points for every second in air after threshold
             if (airTime >= airTimeThreshold && !hasAwardedAirTime)
             {
@@ -74,25 +78,25 @@ public class PlayerController : MonoBehaviour
     void UpdateTrickScore()
     {
         currentRotation = transform.rotation.eulerAngles.z;
-        
+
         float rotationDelta = Mathf.Abs(currentRotation - lastRotation);
-        
+
         if (rotationDelta > 180f)
         {
             rotationDelta = 360f - rotationDelta;
         }
-        
+
         if (isInAir)
         {
             distanceTraveled += rotationDelta;
-            
+
             if (distanceTraveled >= rotationThreshold)
             {
                 score += trickScore;
                 distanceTraveled = 0f;
             }
         }
-        
+
         lastRotation = currentRotation;
     }
 
@@ -107,23 +111,23 @@ public class PlayerController : MonoBehaviour
             airTimeThreshold = 1f;
             hasAwardedAirTime = false;
         }
-        
+
         // Check for collision with bird
-        if (collision.gameObject.CompareTag("Bird"))
+        if (collision.gameObject.CompareTag("Bird") || collision.gameObject.CompareTag("Catus"))
         {
             Die();
         }
     }
-    
+
     void OnTriggerEnter2D(Collider2D collision)
     {
         // Alternative check for trigger colliders
-        if (collision.CompareTag("Bird"))
+        if (collision.CompareTag("Bird") || collision.gameObject.CompareTag("Catus"))
         {
             Die();
         }
     }
-    
+
     void Die()
     {
         if (!isDead)
@@ -131,18 +135,30 @@ public class PlayerController : MonoBehaviour
             isDead = true;
             canMove = false;
             
-            // Optional: Add death animation or effects here
-            
-            // Restart the level after delay
-            Invoke("RestartLevel", restartDelay);
+            // Delay game over screen
+            StartCoroutine(ShowGameOverAfterDelay());
         }
     }
-    
-    void RestartLevel()
+
+    private IEnumerator ShowGameOverAfterDelay()
     {
-        // Reload the current scene
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        yield return new WaitForSeconds(restartDelay);
+        
+        // Pause the game
+        Time.timeScale = 0f;
+        
+        // Show game over UI
+        if (gameOverUI != null)
+        {
+            gameOverUI.ShowGameOver(score);
+        }
     }
+
+    // void RestartLevel()
+    // {
+    //     // Reload the current scene
+    //     SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    // }
 
     void OnCollisionExit2D(Collision2D collision)
     {
@@ -167,7 +183,7 @@ public class PlayerController : MonoBehaviour
     {
         if (Input.GetKey(KeyCode.Space))
         {
-           surfaceEffector2D.speed = boostAmount;
+            surfaceEffector2D.speed = boostAmount;
         }
         else
         {

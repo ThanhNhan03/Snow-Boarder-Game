@@ -16,10 +16,19 @@ public class TerrainGenerator : MonoBehaviour
     private float lastXPosition;
     private float terrainWidth = 0f;
 
+    [Header("Obstacle Settings")]
+    public GameObject[] obstaclePrefabs; // Mảng chứa các loại chướng ngại vật
+    [SerializeField] float obstacleSpacing = 5f;
+    [SerializeField] float obstacleHeightOffset = 0.5f;
+    [SerializeField] [Range(0f, 1f)] float obstacleSpawnChance = 0.5f; 
+    
+    private float lastObstacleX;
+
     void Start()
     {
         lastXPosition = player.position.x;
         terrainWidth = player.position.x;
+        lastObstacleX = player.position.x;
 
         GenerateInitialTerrain();
     }
@@ -57,6 +66,30 @@ public class TerrainGenerator : MonoBehaviour
 
         terrainWidth += segmentLength;
         UpdateTerrainShape();
+        SpawnObstacles(startX, terrainWidth);
+    }
+
+    private List<GameObject> spawnedObstacles = new List<GameObject>();
+
+    void SpawnObstacles(float startX, float endX)
+    {
+        float spawnX = Mathf.Max(startX, lastObstacleX + obstacleSpacing);
+        
+        while (spawnX < endX)
+        {
+            if (Random.value < obstacleSpawnChance)
+            {
+                GameObject selectedPrefab = obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)];
+                Vector3 spawnPosition = new Vector3(spawnX, obstacleHeightOffset, 0);
+                Quaternion rotation = Quaternion.Euler(0, 0, Random.Range(-10f, 10f));
+                
+                GameObject obstacle = Instantiate(selectedPrefab, spawnPosition, rotation, transform);
+                spawnedObstacles.Add(obstacle);
+            }
+            
+            lastObstacleX = spawnX;
+            spawnX += obstacleSpacing;
+        }
     }
 
     void RemoveOldSegments(float cameraX)
@@ -66,6 +99,16 @@ public class TerrainGenerator : MonoBehaviour
         while (terrainPoints.Count > 0 && terrainPoints[0].x < minX)
         {
             terrainPoints.RemoveAt(0);
+        }
+
+        // Remove old obstacles
+        for (int i = spawnedObstacles.Count - 1; i >= 0; i--)
+        {
+            if (spawnedObstacles[i] != null && spawnedObstacles[i].transform.position.x < minX)
+            {
+                Destroy(spawnedObstacles[i]);
+                spawnedObstacles.RemoveAt(i);
+            }
         }
 
         UpdateTerrainShape();

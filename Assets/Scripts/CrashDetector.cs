@@ -1,28 +1,38 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class CrashDetector : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    [SerializeField]
-    private float resetTime = 0.5f;
-    [SerializeField]
-    ParticleSystem DeadEffect;
-    bool hasCrash = false; 
+    [SerializeField] private GameOverUI gameOverUI;
+    [SerializeField] private float delayBeforeGameOver = 1f;
+    [SerializeField] ParticleSystem DeadEffect;
+    bool hasCrash = false;
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.tag == "Ground" && !hasCrash)
         {
             hasCrash = true;
-            FindAnyObjectByType<PlayerController>().OnDisable();
+            var player = FindAnyObjectByType<PlayerController>();
+            player.OnDisable();
+            
             DeadEffect.Play();
             GetComponent<AudioSource>().Play();
-            Invoke("Reset", resetTime);
+            
+            // Delay the game over screen and pause
+            StartCoroutine(ShowGameOverAfterDelay(player.GetScore()));
         }
     }
 
-    private void Reset()
+    private IEnumerator ShowGameOverAfterDelay(float score)
     {
-        SceneManager.LoadScene(0);
+        yield return new WaitForSeconds(delayBeforeGameOver);
+        Time.timeScale = 0f;
+        
+        if (gameOverUI != null)
+        {
+            gameOverUI.ShowGameOver(score);
+        }
     }
 }
